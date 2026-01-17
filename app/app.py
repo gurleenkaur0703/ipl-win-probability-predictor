@@ -49,7 +49,8 @@ st.markdown(
 )
 
 # -------------------- Load trained pipeline --------------------
-pipe = pickle.load(open("pipe.pkl", "rb"))
+pipe_path = os.path.join(os.path.dirname(__file__), "pipe.pkl") 
+pipe = pickle.load(open(pipe_path, "rb"))
 
 # -------------------- Team and city options --------------------
 teams = [
