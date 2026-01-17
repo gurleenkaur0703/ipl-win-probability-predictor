@@ -6,11 +6,15 @@ import os
 
 # -------------------- Background setup --------------------
 def get_base64(file_path):
-    with open(file_path, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except FileNotFoundError:
+        return ""
 
-background_image = get_base64(os.path.join(os.path.dirname(__file__), "BG.jpg"))
+bg_path = os.path.join(os.path.dirname(__file__), "BG.jpg")
+background_image = get_base64(bg_path)
 
 st.markdown(
     f"""
@@ -21,20 +25,17 @@ st.markdown(
         background-repeat: no-repeat;
         background-attachment: fixed;
     }}
-
     .overlay {{
         background-color: rgba(0, 0, 0, 0.45);
         padding: 1rem 1.2rem;
         border-radius: 12px;
         margin-bottom: 10px;
     }}
-
     h1, h2, h3, .stSelectbox label, .stNumberInput label {{
         color: white !important;
         text-shadow: 1px 1px 2px black;
         font-weight: 600;
     }}
-
     .prob-title {{
         color: white;
         font-size: 20px;
@@ -49,8 +50,14 @@ st.markdown(
 )
 
 # -------------------- Load trained pipeline --------------------
-pipe_path = os.path.join(os.path.dirname(__file__), "pipe.pkl") 
-pipe = pickle.load(open(pipe_path, "rb"))
+pipe_path = os.path.join(os.path.dirname(__file__), "pipe.pkl")
+
+try:
+    with open(pipe_path, "rb") as f:
+        pipe = pickle.load(f)
+except FileNotFoundError:
+    st.error("⚠️ Model file (pipe.pkl) not found. Please upload it inside the app folder.")
+    st.stop()
 
 # -------------------- Team and city options --------------------
 teams = [
@@ -67,19 +74,19 @@ teams = [
 ]
 
 cities = [
-    "Ahmedabad",       # Narendra Modi Stadium
-    "Lucknow",         # Ekana Cricket Stadium
-    "Mumbai",          # Wankhede Stadium
-    "Chennai",         # M.A. Chidambaram Stadium
-    "Kolkata",         # Eden Gardens
-    "Delhi",           # Arun Jaitley Stadium
-    "Bengaluru",       # M. Chinnaswamy Stadium
-    "Hyderabad",       # Rajiv Gandhi International Stadium
-    "Jaipur",          # Sawai Mansingh Stadium
-    "Visakhapatnam",   # ACA-VDCA Cricket Stadium
-    "Guwahati",        # Barsapara Cricket Stadium
-    "Dharamsala",      # HPCA Stadium
-    "Mullanpur"        # Maharaja Yadavindra Singh International Cricket Stadium (New Chandigarh)
+    "Ahmedabad",
+    "Lucknow",
+    "Mumbai",
+    "Chennai",
+    "Kolkata",
+    "Delhi",
+    "Bengaluru",
+    "Hyderabad",
+    "Jaipur",
+    "Visakhapatnam",
+    "Guwahati",
+    "Dharamsala",
+    "Mullanpur"
 ]
 
 # -------------------- App title --------------------
@@ -99,7 +106,7 @@ with col2:
 
 selected_city = st.selectbox("Select host city", sorted(cities))
 
-target = st.number_input("Target", min_value=0, value=150)
+target = st.number_input("Target", min_value=1, value=150)
 
 col3, col4, col5 = st.columns(3)
 
@@ -107,7 +114,13 @@ with col3:
     score = st.number_input("Score", min_value=0, value=0)
 
 with col4:
-    overs = st.number_input("Overs completed", min_value=0.0, max_value=20.0, step=0.1, value=0.0)
+    overs = st.number_input(
+        "Overs completed",
+        min_value=0.0,
+        max_value=19.9,
+        step=0.1,
+        value=0.0
+    )
 
 with col5:
     wickets_out = st.number_input("Wickets out", min_value=0, max_value=10, value=0)
@@ -115,42 +128,45 @@ with col5:
 # -------------------- Prediction --------------------
 if st.button("Predict Probability"):
 
-    # 1) Prevent invalid cases (score > target)
+    # Validation
     if score > target:
         st.error("⚠️ Score cannot be greater than Target!")
         st.stop()
 
-    # 2) Overs should not be 20.0 (balls_left becomes 0)
-    if overs >= 20:
-        st.error("⚠️ Overs completed should be less than 20 for live prediction.")
-        st.stop()
-
-    # Feature calculations
     runs_left = target - score
     balls_bowled = int(overs * 6)
     balls_left = 120 - balls_bowled
     wickets_left = 10 - wickets_out
 
+    if balls_left <= 0:
+        st.error("⚠️ Overs completed must be less than 20.0 for live prediction.")
+        st.stop()
+
     crr = (score / overs) if overs > 0 else 0
     rrr = (runs_left * 6 / balls_left) if balls_left > 0 else 0
 
-    # Build input dataframe (keep same columns as your trained pipeline)
+    # ✅ Build input dataframe (MATCHES NEW TRAINED MODEL COLUMNS)
     input_df = pd.DataFrame({
         "batting_team": [batting_team],
         "bowling_team": [bowling_team],
         "city": [selected_city],
         "runs_left": [runs_left],
         "balls_left": [balls_left],
-        "wickets": [wickets_left],
-        "total_runs_x": [target],
+        "wickets_left": [wickets_left],
+        "target": [target],
+        "current_score": [score],
         "crr": [crr],
         "rrr": [rrr]
     })
 
-    # Predict probabilities
-    proba = pipe.predict_proba(input_df)[0]
-    loss = proba[0]
-    win = proba[1]
+    # Predict
+    try:
+        proba = pipe.predict_proba(input_df)[0]
+        loss, win = proba[0], proba[1]
+    except ValueError as e:
+        st.error(f"⚠️ Prediction failed: {e}")
+        st.info("✅ Fix: Make sure your app input columns match the model training columns.")
+        st.stop()
 
     batting_perc = round(win * 100)
     bowling_perc = round(loss * 100)
@@ -162,7 +178,7 @@ if st.button("Predict Probability"):
     colA.metric(label=f"{batting_team} Win %", value=f"{batting_perc}%")
     colB.metric(label=f"{bowling_team} Win %", value=f"{bowling_perc}%")
 
-    # -------------------- IPL Style Win Probability Bar --------------------
+    # -------------------- Win Probability Bar --------------------
     st.markdown("<div class='prob-title'>WIN PROBABILITY</div>", unsafe_allow_html=True)
 
     st.markdown(
@@ -180,11 +196,11 @@ if st.button("Predict Probability"):
         unsafe_allow_html=True
     )
 
-    # Extra match summary
+    # -------------------- Match Situation --------------------
     st.markdown(
         f"""
         <div style="
-            background-color: rgba(0, 0, 0, 0.65);
+            background-color: rgba(0, 0, 0, 0.70);
             padding: 1rem 1.2rem;
             border-radius: 12px;
             margin-top: 12px;

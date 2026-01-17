@@ -1,1 +1,15 @@
-training_files/
+# Ignore training / raw data files
+app/deliveries.csv
+app/matches.csv
+app/Untitled.ipynb
+
+# Ignore all notebooks (optional)
+*.ipynb
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
