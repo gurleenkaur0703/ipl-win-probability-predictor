@@ -2,6 +2,7 @@ import streamlit as st
 import pickle
 import pandas as pd
 import base64
+import os
 
 # -------------------- Background setup --------------------
 def get_base64(file_path):
@@ -9,7 +10,7 @@ def get_base64(file_path):
         data = f.read()
     return base64.b64encode(data).decode()
 
-background_image = get_base64("BG.jpg")  # keep BG.jpg in same folder
+background_image = get_base64(os.path.join(os.path.dirname(__file__), "BG.jpg"))
 
 st.markdown(
     f"""
@@ -65,12 +66,19 @@ teams = [
 ]
 
 cities = [
-    "Hyderabad", "Bangalore", "Mumbai", "Indore", "Kolkata", "Delhi",
-    "Chandigarh", "Jaipur", "Chennai", "Cape Town", "Port Elizabeth",
-    "Durban", "Centurion", "East London", "Johannesburg", "Kimberley",
-    "Bloemfontein", "Ahmedabad", "Cuttack", "Nagpur", "Dharamsala",
-    "Visakhapatnam", "Pune", "Raipur", "Ranchi", "Abu Dhabi",
-    "Sharjah", "Mohali", "Bengaluru"
+    "Ahmedabad",       # Narendra Modi Stadium
+    "Lucknow",         # Ekana Cricket Stadium
+    "Mumbai",          # Wankhede Stadium
+    "Chennai",         # M.A. Chidambaram Stadium
+    "Kolkata",         # Eden Gardens
+    "Delhi",           # Arun Jaitley Stadium
+    "Bengaluru",       # M. Chinnaswamy Stadium
+    "Hyderabad",       # Rajiv Gandhi International Stadium
+    "Jaipur",          # Sawai Mansingh Stadium
+    "Visakhapatnam",   # ACA-VDCA Cricket Stadium
+    "Guwahati",        # Barsapara Cricket Stadium
+    "Dharamsala",      # HPCA Stadium
+    "Mullanpur"        # Maharaja Yadavindra Singh International Cricket Stadium (New Chandigarh)
 ]
 
 # -------------------- App title --------------------
